@@ -62,7 +62,7 @@ function render() {
 
     const label = p === "." ? sq : `${sq}, ${isWhite(p) ? "white" : "black"} ${NAMES[p.toUpperCase()]}`;
     btn.setAttribute("aria-label", label);
-    btn.innerHTML = p === "." ? "" : `<span class="piece ${isWhite(p) ? "w" : "b"}">${p}</span>`;
+    btn.innerHTML = p === "." ? "" : `<img class="piece" src="pieces/${p.toLowerCase()}${isWhite(p) ? "l" : "d"}.svg" alt="" draggable="false">`;
   }
 
   const side = state.turn === "w" ? "White" : "Black";
