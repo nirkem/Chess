@@ -15,6 +15,7 @@ class Board {
         bool in_check = false;
         bool game_over = false;
         std::string game_result;
+        std::string message;        // what the last move() had to say, if anything
 
         // Methods:
         void place_pieces();
@@ -42,4 +43,8 @@ class Board {
         bool move(const std::string& move, int turn);
         bool is_game_over() const { return game_over; }
         std::string get_game_result() const { return game_result; }
+        std::string get_message() const { return message; }
+        bool is_in_check() const { return in_check; }   // the side to move is in check
+        char piece_at(int col, int row) const;          // symbol, or '.' for an empty square
+        std::string legal_moves(bool white) const;
 };

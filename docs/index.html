@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chess</title>
+  <meta name="description" content="Two-player chess in the browser. The rules engine is the C++ console game, compiled to WebAssembly.">
+  <meta name="theme-color" content="#0c0c0e">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="board-wrap" aria-label="Chess board">
+      <div class="ranks" aria-hidden="true"></div>
+      <div id="board" class="board" role="grid" aria-label="Board, white at the bottom"></div>
+      <div class="files" aria-hidden="true"></div>
+
+      <div id="promotion" class="promotion" hidden>
+        <p>Promote to</p>
+        <div class="promotion-choices">
+          <button type="button" data-piece="Q">Queen</button>
+          <button type="button" data-piece="R">Rook</button>
+          <button type="button" data-piece="B">Bishop</button>
+          <button type="button" data-piece="N">Knight</button>
+        </div>
+        <button type="button" class="link" data-piece="">Cancel</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header>
+        <h1>Chess</h1>
+        <p class="lead">Two players, one screen. The rules engine is my C++ console game, compiled to WebAssembly.</p>
+      </header>
+
+      <div class="status" aria-live="polite">
+        <p id="turn" class="turn"><span class="swatch"></span><span class="turn-text">Loading engine…</span></p>
+        <p id="message" class="message"></p>
+      </div>
+
+      <form id="typed" class="typed" autocomplete="off">
+        <label for="typed-move">Or type a move, like the console</label>
+        <div class="typed-row">
+          <input id="typed-move" name="move" placeholder="e2e4" maxlength="5" spellcheck="false">
+          <button type="submit" class="btn">Play</button>
+        </div>
+      </form>
+
+      <div class="history">
+        <h2>Moves</h2>
+        <ol id="moves"></ol>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="new-game" class="btn btn-primary">New game</button>
+        <a class="btn" href="https://github.com/nirkem/Chess" target="_blank" rel="noopener">Source</a>
+      </div>
+    </aside>
+  </main>
+
+  <script src="chess.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

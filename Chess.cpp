@@ -44,6 +44,7 @@ int main() {
         cout << (turn == 0 ? "White" : "Black") << ", please enter a move: ";
         if (!(cin >> move)) break; // input closed
         move_succeeded = board->move(move, turn);
+        if (!board->get_message().empty()) cout << board->get_message() << endl;
 
         if (move_succeeded) {
             board->display_board();

@@ -5,6 +5,7 @@
 // (or run the "test" task in VS Code)
 
 #include "headers/Board.h"
+#include <algorithm>
 #include <iostream>
 
 static int failures = 0;
@@ -125,6 +126,18 @@ int main() {
       expect("en passant only on the very next move", !g.play("e5d6")); }
     { Game g; all(g, {"e2e4", "d7d5", "e4e5", "d5d4", "c2c4"});
       expect("black can take en passant too (d4xc3)", g.play("d4c3")); }
+
+    std::cout << "-- Queries (used by the web version)\n";
+    { Game g;
+      auto count = [](const std::string& s) { return s.empty() ? 0 : 1 + std::count(s.begin(), s.end(), ' '); };
+      expect("20 legal moves for white at the start", count(g.b.legal_moves(true)) == 20);
+      expect("piece_at: white king on e1, empty e4", g.b.piece_at(4, 0) == 'K' && g.b.piece_at(4, 3) == '.');
+      all(g, {"f2f3", "e7e5", "g2g4", "d8h4"});
+      expect("no legal moves after checkmate", g.b.legal_moves(true).empty() && g.b.is_in_check()); }
+    { Game g; all(g, {"e2e4", "d7d5", "f1b5"});
+      expect("in check, only moves that answer it are listed", g.b.legal_moves(false) == "b8c6 b8d7 c7c6 c8d7 d8d7");
+      g.play("h7h6");
+      expect("a rejected move explains why", g.b.get_message() == "Black king would be in check!"); }
 
     std::cout << "-- Input\n";
     { Game g;
