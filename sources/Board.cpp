@@ -217,54 +217,82 @@ bool Board::has_legal_move(bool white) const {
 }
 
 
+// ------- Queries ---------
+char Board::piece_at(int col, int row) const {
+    Piece* p = grid.at(col, row);
+    return p ? p->get_symbol() : '.';
+}
+
+// Every legal move for one side, e.g. "e2e3 e2e4 g1f3 ...". Promotions are listed without the letter.
+string Board::legal_moves(bool white) const {
+    string moves;
+    for (int fc = 0; fc < 8; fc++) {
+        for (int fr = 0; fr < 8; fr++) {
+            Piece* p = grid.at(fc, fr);
+            if (p == nullptr || p->isWhite() != white) continue;
+
+            for (int tc = 0; tc < 8; tc++) {
+                for (int tr = 0; tr < 8; tr++) {
+                    if ((tc != fc || tr != fr) && is_legal(Move{ fc, fr, tc, tr, 0 })) {
+                        if (!moves.empty()) moves += ' ';
+                        moves += { char('a' + fc), char('1' + fr), char('a' + tc), char('1' + tr) };
+                    }
+                }
+            }
+        }
+    }
+    return moves;
+}
+
+
 // ------- Playing a move ---------
 bool Board::move(const string& text, int turn) {
 
+    message.clear();
     if (game_over) return false;
 
     Move m;
     if (!parse(text, m)) {
-        cout << "Moves look like e2e4, or e7e8Q for a promotion." << endl;
+        message = "Moves look like e2e4, or e7e8Q for a promotion.";
         return false;
     }
 
     // get moving piece
     Piece* piece = grid.at(m.from_col, m.from_row);
     if (piece == nullptr) {
-        cout << "No piece at origin." << endl;
+        message = "No piece at origin.";
         return false;
     }
     if (piece->isWhite() && turn == 1) {
-        cout << "Black trying to move white piece" << endl;
+        message = "Black trying to move white piece";
         return false;
     }
     if (!piece->isWhite() && turn == 0) {
-        cout << "White trying to move black piece" << endl;
+        message = "White trying to move black piece";
         return false;
     }
     if (m.from_col == m.to_col && m.from_row == m.to_row) {
-        cout << "The piece has to move." << endl;
+        message = "The piece has to move.";
         return false;
     }
 
     bool white = piece->isWhite();
     bool promoting = piece->kind() == 'P' && m.to_row == (white ? 7 : 0);
     if (m.promotion != 0 && !promoting) {
-        cout << "Only a pawn reaching the last rank can promote." << endl;
+        message = "Only a pawn reaching the last rank can promote.";
         return false;
     }
 
     if (!follows_rules(m)) {
-        if (is_castling(m)) cout << "Castling isn't allowed here." << endl;
-        else cout << "That piece can't move there." << endl;
+        message = is_castling(m) ? "Castling isn't allowed here." : "That piece can't move there.";
         return false;
     }
     if (!is_legal(m)) {
-        cout << (white ? "White" : "Black") << " king would be in check!" << endl;
+        message = string(white ? "White" : "Black") + " king would be in check!";
         return false;
     }
     if (promoting && string("QRBN").find(m.promotion) == string::npos) {
-        cout << "Pawn promotion: add Q, R, B or N, for example " << text.substr(0, 4) << "Q" << endl;
+        message = "Pawn promotion: add Q, R, B or N, for example " + text.substr(0, 4) + "Q";
         return false;
     }
 
@@ -314,6 +342,6 @@ void Board::check_game_state(int turn) {
         game_result = "Stalemate! " + name + " has no legal moves. It's a draw.";
     }
     else if (in_check) {
-        cout << name << " king is in check!" << endl;
+        message = name + " king is in check!";
     }
 }
