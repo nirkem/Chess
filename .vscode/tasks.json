@@ -24,6 +24,37 @@
 				"isDefault": true
 			},
 			"problemMatcher": ["$gcc"]
+		},
+		{
+			"label": "build tests",
+			"type": "process",
+			"command": "g++",
+			"args": [
+				"-I.",
+				"-g",
+				"tests/tests.cpp",
+				"sources/Board.cpp",
+				"sources/Pawn.cpp",
+				"sources/Bishop.cpp",
+				"sources/Knight.cpp",
+				"sources/Rook.cpp",
+				"sources/King.cpp",
+				"sources/Queen.cpp",
+				"-o",
+				"tests/tests.exe"
+			],
+			"problemMatcher": ["$gcc"]
+		},
+		{
+			"label": "test",
+			"type": "process",
+			"command": "${workspaceFolder}/tests/tests.exe",
+			"dependsOn": "build tests",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"problemMatcher": []
 		}
 	]
 }
