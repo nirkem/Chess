@@ -62,7 +62,7 @@ function render() {
 
     const label = p === "." ? sq : `${sq}, ${isWhite(p) ? "white" : "black"} ${NAMES[p.toUpperCase()]}`;
     btn.setAttribute("aria-label", label);
-    btn.innerHTML = p === "." ? "" : `<span class="piece ${isWhite(p) ? "w" : "b"}">${p.toUpperCase()}</span>`;
+    btn.innerHTML = p === "." ? "" : `<span class="piece ${isWhite(p) ? "w" : "b"}">${p}</span>`;
   }
 
   const side = state.turn === "w" ? "White" : "Black";
@@ -149,6 +149,22 @@ document.getElementById("new-game").addEventListener("click", () => {
   say("");
   render();
 });
+
+// Welcome screen: like the console's "Press any key to start...", any key or a tap closes it.
+const welcomeEl = document.getElementById("welcome");
+function closeWelcome() {
+  if (welcomeEl.classList.contains("leaving")) return;
+  welcomeEl.classList.add("leaving");
+  document.removeEventListener("keydown", onWelcomeKey);
+  setTimeout(() => { welcomeEl.hidden = true; }, 200);
+}
+function onWelcomeKey(e) {
+  if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
+  e.preventDefault();
+  closeWelcome();
+}
+document.addEventListener("keydown", onWelcomeKey);
+welcomeEl.addEventListener("click", closeWelcome);
 
 createChess().then((module) => {
   const stateJson = module.cwrap("state", "string", []);

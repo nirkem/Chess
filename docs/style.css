@@ -234,9 +234,84 @@ h2 { margin: 0 0 12px; font-size: 13px; font-weight: 500; color: var(--muted); f
 .btn-primary:hover { border-color: var(--text); }
 .link { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 14px; }
 
+/* ---------- Welcome screen (the console intro) ---------- */
+
+.welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: color-mix(in oklab, var(--bg) 88%, transparent);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: opacity 200ms var(--ease-out);
+}
+.welcome[hidden] { display: none; }
+.welcome.leaving { opacity: 0; }
+
+.terminal {
+  width: min(900px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.9);
+  transition: transform 200ms var(--ease-out);
+}
+.welcome.leaving .terminal { transform: scale(0.98); }
+
+.terminal-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.dots { display: flex; gap: 7px; align-self: center; }
+.dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
+.tab {
+  padding: 8px 16px 9px;
+  border-radius: 8px 8px 0 0;
+  background: var(--bg);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.terminal-text {
+  margin: 0;
+  padding: 24px 28px 28px;
+  font-family: var(--font-mono);
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #d4d4d8;
+  white-space: pre-wrap;
+}
+.terminal-text strong { color: var(--text); font-weight: 600; }
+.terminal-text em { font-style: normal; color: var(--accent); }
+
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: -0.2em;
+  background: var(--text);
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.tap-hint { display: none; color: var(--muted); }
+@media (hover: none) { .tap-hint { display: inline; } }
+
 /* ---------- Small screens ---------- */
 
 @media (max-width: 900px) {
+  .terminal-text { font-size: 12.5px; padding: 18px 16px 22px; }
   :root { --board: min(600px, calc(100vw - 60px)); }
   .app { grid-template-columns: 1fr; gap: 36px; padding: 28px 16px 48px; justify-items: center; }
   .panel { width: 100%; max-width: calc(var(--board) + 28px); }
@@ -245,4 +320,5 @@ h2 { margin: 0 0 12px; font-size: 13px; font-weight: 500; color: var(--muted); f
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
+  .cursor { animation: none; }
 }
