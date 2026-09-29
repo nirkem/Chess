@@ -10,6 +10,8 @@ class Board {
     private:
         // Attributes:
         bool in_check = false;
+        bool game_over = false;
+        string game_result;
         vector<int> legal_col_row;
         Piece* brd[24][24]{};
         King* white_king;
@@ -22,7 +24,15 @@ class Board {
 
         // Methods:
         void place_pieces();
+        void create_pawns();
+        void create_rooks();
+        void create_bishops();
+        void create_knights();
+        void create_royalty();
         void delete_piece(Piece& piece);
+        void add_piece(Piece* piece);
+        bool try_move(Piece* piece, int dst_col, int dst_row, int turn, bool keep);
+        bool has_legal_move(int turn);
         void checkForCheck(int turn);
 
     public:
@@ -38,6 +48,8 @@ class Board {
 
         void display_board();
         bool move(string move, int turn);
+        bool is_game_over() const { return game_over; }
+        string get_game_result() const { return game_result; }
 
         vector<Piece*> get_pieces();
         vector<Piece*> get_white_pieces();

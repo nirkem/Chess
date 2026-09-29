@@ -34,19 +34,23 @@ int main() {
     int turn{0};
 
     while (playing) {
-        cout << "Please enter a move: ";
-        cin >> move;
+        cout << (turn == 0 ? "White" : "Black") << ", please enter a move: ";
+        if (!(cin >> move)) break; // input closed
         move_succeeded = board->move(move, turn);
 
         if (move_succeeded) {
             board->display_board();
             turn = (turn == 0) ? 1 : 0;
 
+            if (board->is_game_over()) {
+                cout << board->get_game_result() << endl;
+                playing = false;
+            }
         } else {
             cout << "Illegal Move" << endl;
             continue;
         }
-        
+
     }
 
     delete(board);
