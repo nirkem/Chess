@@ -7,132 +7,36 @@ Bishop::Bishop(int col, int row, bool is_white) : Piece(col, row, is_white) {
 }
 
 bool Bishop::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24]) {
+    const char* color = is_white ? "white" : "black";
     int col_abs_diff = std::abs(new_col - col);
     int row_abs_diff = std::abs(new_row - row);
     if (new_row == row ||
         new_col == col ||
         col_abs_diff != row_abs_diff) {
-        std::cout << "Invalid move for white bishop." << std::endl;
+        std::cout << "Invalid move for " << color << " bishop." << std::endl;
         return false;
     }
-    // handle WHITE
-    if (is_white) {
-        if (new_col > col && new_row > row) {
-            for (int c = col + 3, r = row + 3; c < new_col && r < new_row; c += 3, r += 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for white bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        else if (new_col > col && new_row < row) {
-            for (int c = col + 3, r = row - 3; c < new_col && r > new_row; c += 3, r -= 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for white bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        else if (new_col < col && new_row > row) {
-            for (int c = col - 3, r = row + 3; c > new_col && r < new_row; c -= 3, r += 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for white bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        else if (new_col < col&& new_row < row) {
-            for (int c = col - 3, r = row - 3; c > new_col && r > new_row; c -= 3, r -= 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for white bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        if (brd[new_col][new_row] != nullptr) {
-            Piece* piece_to_kill = brd[new_col][new_row];
-            if (piece_to_kill->isWhite()) {
-                std::cout << "Invalid move for white bishop." << std::endl;
-                std::cout << "Cannot capture own piece." << std::endl;
-                return false;
-            }
-        }
-        else {
-            // regular move
-            col = new_col;
-            row = new_row;
 
-            return true;
+    // Check for blocked path (all four diagonals)
+    int col_step = (new_col > col) ? 3 : -3;
+    int row_step = (new_row > row) ? 3 : -3;
+    for (int c = col + col_step, r = row + row_step; c != new_col; c += col_step, r += row_step) {
+        if (brd[c][r] != nullptr) {
+            std::cout << "Path blocked for " << color << " bishop." << std::endl;
+            return false;
         }
     }
-    // handle BLACK
-    else {
-        if (new_col > col && new_row > row) {
-            for (int c = col + 3, r = row + 3; c < new_col && r < new_row; c += 3, r += 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for black bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        else if (new_col > col && new_row < row) {
-            for (int c = col + 3, r = row - 3; c < new_col && r > new_row; c += 3, r -= 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for black bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        else if (new_col < col && new_row > row) {
-            for (int c = col - 3, r = row + 3; c > new_col && r < new_row; c -= 3, r += 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for black bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        else if (new_col < col&& new_row < row) {
-            for (int c = col - 3, r = row - 3; c > new_col && r > new_row; c -= 3, r -= 3) {
-                if (brd[c][r] != nullptr) {
-                    std::cout << "Path blocked for black bishop." << std::endl;
-                    Piece* blocking_piece = brd[c][r];
-                    std::cout << "Blocking piece symbol: " << (blocking_piece ? blocking_piece->get_symbol() : ' ') << std::endl;
-                    return false;
-                }
-            }
-        }
-        if (brd[new_col][new_row] != nullptr) {
-            Piece* piece_to_kill = brd[new_col][new_row];
-            if (!piece_to_kill->isWhite()) {
-                std::cout << "Invalid move for black bishop." << std::endl;
-                std::cout << "Cannot capture own piece." << std::endl;
-                return false;
-            }
-        }
-        else {
-            // regular move
-            col = new_col;
-            row = new_row;
-            return true;
-        }
+
+    // Check for capturing
+    if (brd[new_col][new_row] != nullptr && brd[new_col][new_row]->isWhite() == is_white) {
+        std::cout << "Invalid move for " << color << " bishop." << std::endl;
+        std::cout << "Cannot capture own piece." << std::endl;
+        return false;
     }
+
+    // Regular move or capture
+    col = new_col;
+    row = new_row;
+    has_moved = true;
     return true;
-}
-
-bool Bishop::getHasMoved() const {
-    return has_moved;
 }

@@ -26,29 +26,15 @@ bool King::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
     return false;
 }
 
-bool King::getHasMoved() const {
-    return has_moved;
-}
-
 bool King::isInCheck(Piece* const (&brd)[24][24]) {
     // Check if the king is in check by any opponent piece
 
-    // check same row and col for Rook or Queen
-    for (int i = 1; i < 24; i++) {
-        if (brd[col][i] != nullptr) {
-            if (brd[col][i]->isWhite() != isWhite()) {
-                char symbol = brd[col][i]->get_symbol();
-                if (symbol == 'r' || symbol == 'R' || symbol == 'q' || symbol == 'Q') {
-                    return true;
-                }
-                else break; // blocked by other piece
-            }
-            else break; // blocked by own piece
-        }
-    }
-    // check diagonals for Bishop or Queen or Pawn
-    int directions[4][2] = { {1,1}, {1,-1}, {-1,1}, {-1,-1} };
+    // Walk outward from the king in all 8 directions.
+    // Straight lines: Rook or Queen. Diagonals: Bishop or Queen (or Pawn, one step).
+    // One step in any direction: the enemy King.
+    int directions[8][2] = { {1,0}, {-1,0}, {0,1}, {0,-1}, {1,1}, {1,-1}, {-1,1}, {-1,-1} };
     for (auto& dir : directions) {
+        bool diagonal = dir[0] != 0 && dir[1] != 0;
         int n = 1;
         while (true) {
             int new_col = col + dir[0] * 3 * n;
@@ -58,18 +44,22 @@ bool King::isInCheck(Piece* const (&brd)[24][24]) {
             if (otherPiece != nullptr) {
                 if (otherPiece->isWhite() != isWhite()) {
                     char symbol = otherPiece->get_symbol();
-                    if (symbol == 'b' || symbol == 'B' || symbol == 'q' || symbol == 'Q') {
+                    if (diagonal && (symbol == 'b' || symbol == 'B' || symbol == 'q' || symbol == 'Q')) {
                         return true;
                     }
-                    // Check for pawn attack
-                    if ((isWhite() && symbol == 'p' && dir[1] == -1) || (!isWhite() && symbol == 'P' && dir[1] == 1)) {
-                        if (std::abs(dir[0]) == 1 && std::abs(dir[1]) == 1 && n == 1) {
-                            return true;
-                        }
+                    if (!diagonal && (symbol == 'r' || symbol == 'R' || symbol == 'q' || symbol == 'Q')) {
+                        return true;
                     }
-                    break; // blocked by other piece
+                    if (n == 1 && (symbol == 'k' || symbol == 'K')) {
+                        return true;
+                    }
+                    // Check for pawn attack (white pawns move up the board, black pawns down)
+                    if (diagonal && n == 1 &&
+                        ((isWhite() && symbol == 'p' && dir[1] == -1) || (!isWhite() && symbol == 'P' && dir[1] == 1))) {
+                        return true;
+                    }
                 }
-                else break; // blocked by own piece
+                break; // blocked by any piece
             }
             n++;
         }

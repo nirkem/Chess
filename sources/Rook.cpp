@@ -56,9 +56,6 @@ bool Rook::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
     // Regular move
     col = new_col;
     row = new_row;
+    has_moved = true;
     return true;
-}
-
-bool Rook::getHasMoved() const {
-    return has_moved;
 }

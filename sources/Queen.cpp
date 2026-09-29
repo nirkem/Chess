@@ -52,7 +52,3 @@ bool Queen::move(int new_col, int new_row, int player, Piece* const (&brd)[24][2
     }
     return false;
 }
-
-bool Queen::getHasMoved() const {
-    return has_moved;
-}

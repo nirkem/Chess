@@ -25,7 +25,3 @@ bool Knight::move(int new_col, int new_row, int player, Piece* const (&brd)[24][
     }
     return false;
 }
-
-bool Knight::getHasMoved() const {
-    return has_moved;
-}

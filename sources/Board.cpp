@@ -6,6 +6,7 @@
 #include "../headers/Bishop.h"
 #include "../headers/King.h"
 #include <iostream>
+#include <cctype>
 
 using namespace std;
 
@@ -54,6 +55,7 @@ int convert_to_int(char c) {
 
 bool is_legit_string(string s) {
 
+    if (s.size() != 4 && s.size() != 5) return false;
     if (s[1] > '8' || s[1] < '1' || s[3] > '8' || s[3] < '1') return false;
 
     int first_char = int(s[0]);
@@ -118,7 +120,7 @@ void Board::display_board() {
 
         }
 
-        if (std::find(legal_col_row.begin(), legal_col_row.end(), row) != legal_col_row.end()) cout << " | " << (row - 1) / 3 + 1;
+        if (std::find(legal_col_row.begin(), legal_col_row.end(), row) != legal_col_row.end()) cout << " | " << 8 - (row - 1) / 3;
         // else cout << " |   ";
         cout << endl;
         row_counter++;
@@ -147,29 +149,31 @@ void Board::display_board() {
 bool Board::move(string move, int turn) {
 
     // check if legal move
-    if (!is_legit_string(move)) return false;
-
-    // provide check bacground
-    bool wasInCheck = in_check;
+    if (game_over) return false;
+    if (!is_legit_string(move)) {
+        cout << "Moves look like e2e4, or e7e8Q for a promotion." << endl;
+        return false;
+    }
 
     // convert move to a list of ints representing the move
     int* ans = convert_string_to_col_row(move);
 
-    int origin_col = ans[0];
-    int origin_row = ans[1];
-    int dst_col = ans[2];
-    int dst_row = ans[3];
-    int new_piece = ans[4];
+    // files a-h go left to right, rank 8 is at the top of the board
+    int origin_col = 3 * (ans[0] - 1) + 1;
+    int origin_row = 3 * (8 - ans[1]) + 1;
+    int dst_col = 3 * (ans[2] - 1) + 1;
+    int dst_row = 3 * (8 - ans[3]) + 1;
+    char new_piece = char(toupper(ans[4]));
 
-    delete ans;
+    delete[] ans;
     ans = nullptr;
 
     // get moving piece
-    Piece* piece = brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1];
+    Piece* piece = brd[origin_col][origin_row];
     if (piece == nullptr) {
         cout << "No piece at origin." << endl;
         return false;
-    } 
+    }
     if (piece->isWhite() && turn == 1) {
         cout << "Black trying to move white piece" << endl;
         return false;
@@ -178,112 +182,117 @@ bool Board::move(string move, int turn) {
         cout << "White trying to move black piece" << endl;
         return false;
     }
+    if (origin_col == dst_col && origin_row == dst_row) {
+        cout << "The piece has to move." << endl;
+        return false;
+    }
 
-    if (new_piece != 0) {
-        // handle new piece move
+    // a pawn reaching the last rank must promote
+    char pawn_symbol = piece->isWhite() ? 'P' : 'p';
+    int last_row = piece->isWhite() ? 1 : 22;
+    bool promoting = piece->get_symbol() == pawn_symbol && dst_row == last_row;
+
+    if (new_piece != 0 && !promoting) {
+        cout << "Only a pawn reaching the last rank can promote." << endl;
+        return false;
+    }
+    if (promoting && (new_piece == 0 || string("QRBN").find(new_piece) == string::npos)) {
+        if (try_move(piece, dst_col, dst_row, turn, false))
+            cout << "Pawn promotion: add Q, R, B or N, for example " << move.substr(0, 4) << "Q" << endl;
+        return false;
+    }
+
+    // perform the move (reverted inside if it leaves our own king in check)
+    if (!try_move(piece, dst_col, dst_row, turn, true)) return false;
+
+    if (promoting) {
+        bool white = piece->isWhite();
+        Piece* promoted;
+        switch (new_piece) {
+            case 'R': promoted = new Rook(dst_col, dst_row, white); break;
+            case 'B': promoted = new Bishop(dst_col, dst_row, white); break;
+            case 'N': promoted = new Knight(dst_col, dst_row, white); break;
+            default:  promoted = new Queen(dst_col, dst_row, white); break;
+        }
+        promoted->set_has_moved(true);
+        brd[dst_col][dst_row] = promoted;
+        delete_piece(*piece);
+        add_piece(promoted);
+    }
+
+    checkForCheck(turn);
+    return true;
+}
+
+// Moves the piece and keeps the move only if it doesn't leave its own king in check.
+// With keep == false the move is always undone, so this only answers "is it legal?".
+bool Board::try_move(Piece* piece, int dst_col, int dst_row, int turn, bool keep) {
+    int origin_col = piece->get_col();
+    int origin_row = piece->get_row();
+    bool had_moved = piece->getHasMoved();
+    Piece* captured = brd[dst_col][dst_row];
+
+    if (!piece->move(dst_col, dst_row, turn, brd)) return false;
+
+    brd[origin_col][origin_row] = nullptr;
+    brd[dst_col][dst_row] = piece;
+
+    King* own_king = piece->isWhite() ? white_king : black_king;
+    bool legal = !own_king->isInCheck(brd);
+    if (!legal && keep) {
+        cout << (piece->isWhite() ? "White" : "Black") << " king would be in check!" << endl;
+    }
+
+    if (!legal || !keep) {
+        // revert move: board squares and the piece's own position
+        brd[origin_col][origin_row] = piece;
+        brd[dst_col][dst_row] = captured;
+        piece->set_col(origin_col);
+        piece->set_row(origin_row);
+        piece->set_has_moved(had_moved);
+        return legal;
+    }
+
+    if (captured != nullptr) delete_piece(*captured);
+    return true;
+}
+
+bool Board::has_legal_move(int turn) {
+    // try every square for every piece, with the pieces' "invalid move" messages muted
+    vector<Piece*> own = (turn == 0) ? white_pieces : black_pieces;
+    streambuf* old_buf = cout.rdbuf(nullptr);
+    bool found = false;
+
+    for (Piece* p : own) {
+        for (int c : legal_col_row) {
+            for (int r : legal_col_row) {
+                if (c == p->get_col() && r == p->get_row()) continue;
+                if (try_move(p, c, r, turn, false)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+        if (found) break;
+    }
+
+    cout.rdbuf(old_buf);
+    return found;
+}
+
+void Board::add_piece(Piece* piece) {
+    pieces.push_back(piece);
+    if (piece->isWhite()) {
+        white_pieces.push_back(piece);
+        if (piece->get_symbol() == 'P')
+            white_Pawns.push_back(piece);
     }
     else {
-        // handle regular move
-        // get destenation spot
-        Piece* dst = brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1];
-        if (dst == nullptr) {
-            // perform regular move
-            bool succeeded = piece->move(3 * (dst_col - 1) + 1, 3 * (dst_row - 1) + 1, turn, brd);
-            if (succeeded) {
-                brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1] = nullptr;
-                brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1] = piece;
-
-                if (wasInCheck) {
-                    in_check = false;
-                    if (turn == 0) {
-                        if (white_king->isInCheck(brd)) {
-                            in_check = true;
-                            cout << "White king is still in check!" << endl;
-                            // revert move
-                            brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1] = piece;
-                            brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1] = nullptr;
-                            return false;
-                        }
-                    }
-                    else {
-                        if (black_king->isInCheck(brd)) {
-                            in_check = true;
-                            cout << "Black king is still in check!" << endl;
-                            // revert move
-                            brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1] = piece;
-                            brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1] = nullptr;
-                            return false;
-                        }
-                    }
-                }
-                checkForCheck(turn);
-                return true;
-            }
-            else return false;
-        }
-        else {
-            // handle kill_move
-            bool succeeded = piece->move(3 * (dst_col - 1) + 1, 3 * (dst_row - 1) + 1, turn, brd);
-            if (succeeded) {
-                
-                brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1] = nullptr;
-                brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1] = piece;
-
-                if (wasInCheck) {
-                    in_check = false;
-                    if (turn == 0) {
-                        if (white_king->isInCheck(brd)) {
-                            in_check = true;
-                            cout << "White king is still in check!" << endl;
-                            // revert move
-                            brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1] = piece;
-                            brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1] = dst;
-                            pieces.push_back(dst);
-                            if (dst->isWhite()) {
-                                white_pieces.push_back(dst);
-                                if (dst->get_symbol() == 'P')
-                                    white_Pawns.push_back(dst);
-                            }
-                            else {
-                                black_pieces.push_back(dst);
-                                if (dst->get_symbol() == 'p')
-                                    black_Pawns.push_back(dst);
-                            }
-                            return false;
-                        }
-                    }
-                    else {
-                        if (black_king->isInCheck(brd)) {
-                            in_check = true;
-                            cout << "Black king is still in check!" << endl;
-                            // revert move
-                            brd[3 * (origin_col - 1) + 1][3 * (origin_row - 1) + 1] = piece;
-                            brd[3 * (dst_col - 1) + 1][3 * (dst_row - 1) + 1] = dst;
-                            pieces.push_back(dst);
-                            if (dst->isWhite()) {
-                                white_pieces.push_back(dst);
-                                if (dst->get_symbol() == 'P')
-                                    white_Pawns.push_back(dst);
-                            }
-                            else {
-                                black_pieces.push_back(dst);
-                                if (dst->get_symbol() == 'p')
-                                    black_Pawns.push_back(dst);
-                            }
-                            return false;
-                        }
-                    }
-                }
-                
-                delete_piece(*dst);
-                checkForCheck(turn);
-                return true;
-            } else return false;
-        }
-        checkForCheck(turn);
-        return true;
+        black_pieces.push_back(piece);
+        if (piece->get_symbol() == 'p')
+            black_Pawns.push_back(piece);
     }
-    return true;
 }
 
 
@@ -337,16 +346,16 @@ void Board::create_knights() {
 
 void Board::create_royalty() {
     // Create Queen
-    brd[13][1] = new Queen(13, 1, false);
-    brd[13][22] = new Queen(13, 22, true);
-    pieces.push_back(brd[13][1]);
-    pieces.push_back(brd[13][22]);
+    brd[10][1] = new Queen(10, 1, false);
+    brd[10][22] = new Queen(10, 22, true);
+    pieces.push_back(brd[10][1]);
+    pieces.push_back(brd[10][22]);
 
     // Create King
-    white_king = new King(10, 22, true);
-    black_king = new King(10, 1, false);
-    brd[10][1] = black_king;
-    brd[10][22] = white_king;
+    white_king = new King(13, 22, true);
+    black_king = new King(13, 1, false);
+    brd[13][1] = black_king;
+    brd[13][22] = white_king;
 
     pieces.push_back(black_king);
     pieces.push_back(white_king);
@@ -360,31 +369,29 @@ void Board::place_pieces() {
     create_royalty();
 
     // keep vector of black and white pieces
-    for (const auto& piece : pieces) {
-        if (piece->isWhite()) {
-            white_pieces.push_back(piece);
-            if (piece->get_symbol() == 'P')
-                white_Pawns.push_back(piece);
-        }
-        else {
-            black_pieces.push_back(piece);
-            if (piece->get_symbol() == 'p')
-                black_Pawns.push_back(piece);
-        }
-    }
+    vector<Piece*> created = pieces;
+    pieces.clear();
+    for (Piece* piece : created) add_piece(piece);
 }
 
 void Board::checkForCheck(int turn) {
-    if (turn == 0) {
-        in_check = black_king->isInCheck(brd);
-        if (in_check) {
-            cout << "Black king is in check!" << endl;
-        }
-    } 
-    else {
-        in_check = white_king->isInCheck(brd);
-        if (in_check) {
-            cout << "White king is in check!" << endl;
-        }
+    // after `turn` moved, look at the opponent's position
+    int opponent = (turn == 0) ? 1 : 0;
+    King* king = (opponent == 0) ? white_king : black_king;
+    string name = (opponent == 0) ? "White" : "Black";
+
+    in_check = king->isInCheck(brd);
+    bool can_move = has_legal_move(opponent);
+
+    if (in_check && !can_move) {
+        game_over = true;
+        game_result = "Checkmate! " + string(turn == 0 ? "White" : "Black") + " wins.";
+    }
+    else if (!can_move) {
+        game_over = true;
+        game_result = "Stalemate! " + name + " has no legal moves. It's a draw.";
+    }
+    else if (in_check) {
+        cout << name << " king is in check!" << endl;
     }
 }

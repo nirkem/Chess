@@ -26,6 +26,7 @@ bool Pawn::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
             if (new_row == row - 3) {
                 col = new_col;
                 row = new_row;
+                has_moved = true;
                 return true;
             }
             else if (new_row == row - 6) {
@@ -33,6 +34,7 @@ bool Pawn::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
                 else {
                     col = new_col;
                     row = new_row;
+                    has_moved = true;
                     return true;
                 }
             }
@@ -43,16 +45,13 @@ bool Pawn::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
             else {
                 col = new_col;
                 row = new_row;
+                has_moved = true;
                 return true;
             }
         }
     }
     // handle BLACK
     else {
-        std::cout << "Handling black pawn move." << std::endl;
-        std::cout << "Current position: (" << col << ", " << row << ")" << std::endl;
-        std::cout << "Attempting move to: (" << new_col << ", " << new_row << ")" << std::endl;
-
         if (new_row <= row ||
             new_row > row + 6 ||
             new_col < col - 3 ||
@@ -74,6 +73,7 @@ bool Pawn::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
             if (new_row == row + 3) {
                 col = new_col;
                 row = new_row;
+                has_moved = true;
                 return true;
             }
             else if (new_row == row + 6) {
@@ -86,6 +86,7 @@ bool Pawn::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
                 else {
                     col = new_col;
                     row = new_row;
+                    has_moved = true;
                     return true;
                 }
             }
@@ -96,13 +97,10 @@ bool Pawn::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24
             else {
                 col = new_col;
                 row = new_row;
+                has_moved = true;
                 return true;
             }
         }
     }
     return true;
-}
-
-bool Pawn::getHasMoved() const {
-    return has_moved;
 }
