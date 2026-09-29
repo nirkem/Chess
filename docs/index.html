@@ -12,6 +12,29 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- the same welcome text the console game prints (Chess.cpp) -->
+  <div id="welcome" class="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="terminal">
+      <div class="terminal-bar" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><span class="tab">Chess.exe</span></div>
+<pre class="terminal-text"><strong id="welcome-title">Welcome to Nir's Chess game!</strong>
+
+In this game, we perform moves by specifying the origin square and the destination square.
+For example, to move Pawn d2 to square d4, you need to enter: <em>d2d4</em> in the console.
+
+In case of a pawn promotion, enter the move followed by the symbol of the new piece.
+For example, to move Pawn b7 to b8 and promote to queen, you need to enter: <em>b7b8Q</em> in the console
+
+To castle, move the king two squares toward the rook, for example: <em>e1g1</em> or <em>e1c1</em>.
+En passant is played like any other pawn capture, for example: <em>e5d6</em>.
+
+On the board, white pieces are represented by capital letters and black by lowercase letters.
+Remember that white always starts the game.
+
+Have Fun!
+Press any key to start...<span class="cursor" aria-hidden="true"></span><span class="tap-hint"> (or tap)</span></pre>
+    </div>
+  </div>
+
   <main class="app">
     <section class="board-wrap" aria-label="Chess board">
       <div class="ranks" aria-hidden="true"></div>
