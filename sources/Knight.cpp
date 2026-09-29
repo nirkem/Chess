@@ -1,27 +1,11 @@
 #include "../headers/Knight.h"
-#include <iostream>
 
-Knight::Knight(int col, int row, bool is_white) : Piece(col, row, is_white) {
-    if (is_white) this->symbol = 'N';
-    else this->symbol = 'n';
-}
+Knight::Knight(bool is_white) : Piece('N', is_white) {}
 
-bool Knight::move(int new_col, int new_row, int player, Piece* const (&brd)[24][24]) {
-    int col_abs_diff = std::abs(new_col - col);
-    int row_abs_diff = std::abs(new_row - row);
-
-    if ((col_abs_diff == 6 && row_abs_diff == 3) || (col_abs_diff == 3 && row_abs_diff == 6)) {
-        // Check for obstacles
-        if (brd[new_col][new_row] != nullptr) {
-            if (brd[new_col][new_row]->isWhite() == isWhite()) {
-                std::cout << "Cannot capture own piece." << std::endl;
-                return false;
-            }
-        }
-        col = new_col;
-        row = new_row;
-        has_moved = true;
-        return true;
-    }
-    return false;
+bool Knight::attacks(const Grid& g, int from_col, int from_row, int to_col, int to_row) const {
+    // an L: two squares one way, one square the other. Jumps over pieces.
+    (void)g;
+    int col_diff = std::abs(to_col - from_col);
+    int row_diff = std::abs(to_row - from_row);
+    return (col_diff == 1 && row_diff == 2) || (col_diff == 2 && row_diff == 1);
 }

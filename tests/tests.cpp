@@ -95,6 +95,37 @@ int main() {
       expect("promotion letter on a normal move is rejected", !g.play("e2e4Q"));
       expect("...and doesn't pass the turn", g.turn == 0 && g.play("e2e4")); }
 
+    std::cout << "-- Castling\n";
+    { Game g; all(g, {"e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6"});
+      expect("white castles kingside (e1g1)", g.play("e1g1"));
+      expect("...black castles kingside too", all(g, {"f8c5", "d2d3"}) && g.play("e8g8"));
+      expect("...the rook landed on f1 and can move", g.play("f1e1"));
+      expect("...the king landed on g1 and can move", g.play("h7h6") && g.play("g1h1")); }
+    { Game g; all(g, {"d2d4", "d7d5", "b1c3", "b8c6", "c1f4", "c8f5", "d1d2", "d8d7"});
+      expect("white castles queenside (e1c1)", g.play("e1c1"));
+      expect("...the rook landed on d1 and can move", g.play("a7a6") && g.play("d1e1")); }
+    { Game g; all(g, {"e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "e1e2", "a7a6", "e2e1", "a6a5"});
+      expect("no castling after the king has moved", !g.play("e1g1")); }
+    { Game g; all(g, {"e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "h1g1", "a7a6", "g1h1", "a6a5"});
+      expect("no castling after the rook has moved", !g.play("e1g1")); }
+    { Game g; all(g, {"e2e4", "e7e5", "g1f3", "b8c6"});
+      expect("no castling with a piece in between (f1 bishop)", !g.play("e1g1")); }
+    { Game g; all(g, {"g2g3", "d7d6", "f1h3", "c8h3", "g1f3", "a7a6"});
+      expect("no castling through an attacked square (f1, by the h3 bishop)", !g.play("e1g1")); }
+    { Game g; all(g, {"e2e4", "e7e5", "g1f3", "b8c6", "f1e2", "a7a6", "d2d3", "f8b4"});
+      expect("no castling out of check (Bb4+)", !g.play("e1g1"));
+      expect("...but blocking the check works", g.play("c2c3")); }
+
+    std::cout << "-- En passant\n";
+    { Game g; all(g, {"e2e4", "a7a6", "e4e5", "d7d5"});
+      expect("e5xd6 en passant right after d7-d5", g.play("e5d6"));
+      expect("...the white pawn landed on d6 (c7xd6 captures it)", g.play("c7d6"));
+      expect("...and the captured d5 pawn is gone (d4-d5 is free)", all(g, {"d2d4", "a6a5"}) && g.play("d4d5")); }
+    { Game g; all(g, {"e2e4", "a7a6", "e4e5", "d7d5", "h2h3", "h7h6"});
+      expect("en passant only on the very next move", !g.play("e5d6")); }
+    { Game g; all(g, {"e2e4", "d7d5", "e4e5", "d5d4", "c2c4"});
+      expect("black can take en passant too (d4xc3)", g.play("d4c3")); }
+
     std::cout << "-- Input\n";
     { Game g;
       expect("short or long input is rejected", !g.play("e2") && !g.play("") && !g.play("e2e4e5e6"));
