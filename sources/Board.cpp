@@ -7,169 +7,229 @@
 #include "../headers/King.h"
 #include <iostream>
 #include <cctype>
+#include <cstdlib>
 
 using namespace std;
 
 
 // ------- Ctor Dtor ---------
 Board::Board() {
-    legal_col_row = { 1, 4, 7, 10, 13, 16, 19, 22 };
     place_pieces();
 }
 
 Board::~Board() {
-    for (Piece* p : pieces) {
-        delete p;
+    for (auto& column : grid.sq) {
+        for (Piece* p : column) {
+            delete p;
+        }
     }
 }
 
-void Board::delete_piece(Piece& piece) {
-    // Get pointer to the object
-    Piece* ptr = &piece;
 
-    // Delete the object
-    delete ptr;
+// ------- Creating pieces ---------
+void Board::place_pieces() {
+    for (int white = 0; white <= 1; white++) {
+        int back_row = white ? 0 : 7;
+        int pawn_row = white ? 1 : 6;
 
-    // Remove all pointers to this object from all vectors
-    auto remove_ptr = [ptr](std::vector<Piece*>& vec) {
-        vec.erase(std::remove(vec.begin(), vec.end(), ptr), vec.end());
-        };
+        grid.sq[0][back_row] = new Rook(white);
+        grid.sq[1][back_row] = new Knight(white);
+        grid.sq[2][back_row] = new Bishop(white);
+        grid.sq[3][back_row] = new Queen(white);
+        grid.sq[4][back_row] = new King(white);
+        grid.sq[5][back_row] = new Bishop(white);
+        grid.sq[6][back_row] = new Knight(white);
+        grid.sq[7][back_row] = new Rook(white);
 
-    remove_ptr(pieces);
-    remove_ptr(white_pieces);
-    remove_ptr(white_Pawns);
-    remove_ptr(black_pieces);
-    remove_ptr(black_Pawns);
+        for (int col = 0; col < 8; col++) {
+            grid.sq[col][pawn_row] = new Pawn(white);
+        }
+    }
 }
 
-char convert_to_char(int num) {
-    num--;
-    num += 'a';
-    return char(num);
+
+// ------- Display ---------
+void Board::display_board() const {
+    // Each square is drawn 3 cells wide and 3 lines tall, each cell 2 characters
+    const string light = "  ";
+    const string dark = "██"; // two full blocks
+
+    cout << endl << endl;
+    for (int row = 7; row >= 0; row--) {
+        for (int line = 0; line < 3; line++) {
+            for (int col = 0; col < 8; col++) {
+                const string& fill = ((col + row) % 2 == 0) ? dark : light; // a1 is dark
+                Piece* piece = grid.at(col, row);
+
+                cout << fill;
+                if (line == 1 && piece != nullptr) cout << piece->get_symbol() << ' ';
+                else cout << fill;
+                cout << fill;
+            }
+            if (line == 1) cout << " | " << row + 1;
+            cout << endl;
+        }
+    }
+
+    cout << "  ";
+    for (int col = 0; col < 8; col++) cout << "_     ";
+    cout << endl << "  ";
+    for (int col = 0; col < 8; col++) cout << char('a' + col) << "     ";
+    cout << endl;
 }
 
-int convert_to_int(char c) {
-    int num = int(c) - 96;
-    return num;
-}
 
-bool is_legit_string(string s) {
+// ------- Reading moves ---------
+// "e2e4" or "e7e8Q": origin square, destination square, optional promotion piece
+bool Board::parse(const string& text, Move& m) const {
+    if (text.size() != 4 && text.size() != 5) return false;
+    if (text[0] < 'a' || text[0] > 'h' || text[2] < 'a' || text[2] > 'h') return false;
+    if (text[1] < '1' || text[1] > '8' || text[3] < '1' || text[3] > '8') return false;
 
-    if (s.size() != 4 && s.size() != 5) return false;
-    if (s[1] > '8' || s[1] < '1' || s[3] > '8' || s[3] < '1') return false;
-
-    int first_char = int(s[0]);
-    int second_char = int(s[2]);
-
-    if (first_char < 97 || first_char > 104 || second_char < 97 || second_char > 104) return false;
-
+    m.from_col = text[0] - 'a';
+    m.from_row = text[1] - '1';
+    m.to_col = text[2] - 'a';
+    m.to_row = text[3] - '1';
+    m.promotion = (text.size() == 5) ? char(toupper(text[4])) : 0;
     return true;
 }
 
-int* convert_string_to_col_row(string move) {
-    int origin_col = convert_to_int(move[0]);
-    int origin_row = move[1] - '0';
-    int dest_col = convert_to_int(move[2]);
-    int dest_row = move[3] - '0';
 
-    int* ans = new int[5]();
+// ------- Rules ---------
+bool Board::square_attacked(const Grid& g, int col, int row, bool by_white) const {
+    for (int c = 0; c < 8; c++) {
+        for (int r = 0; r < 8; r++) {
+            Piece* p = g.at(c, r);
+            if (p != nullptr && p->isWhite() == by_white && (c != col || r != row) && p->attacks(g, c, r, col, row)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
-    ans[0] = origin_col;
-    ans[1] = origin_row;
-    ans[2] = dest_col;
-    ans[3] = dest_row;
-    if (move.size() > 4) ans[4] = int(move[4]);
+bool Board::king_in_check(const Grid& g, bool white) const {
+    for (int c = 0; c < 8; c++) {
+        for (int r = 0; r < 8; r++) {
+            Piece* p = g.at(c, r);
+            if (p != nullptr && p->kind() == 'K' && p->isWhite() == white) {
+                return square_attacked(g, c, r, !white);
+            }
+        }
+    }
+    return false;
+}
 
-    return ans;
+// A pawn capturing a pawn that just moved two squares past it
+bool Board::is_en_passant(const Move& m) const {
+    Piece* piece = grid.at(m.from_col, m.from_row);
+    if (piece == nullptr || piece->kind() != 'P' || m.to_col != en_passant_col) return false;
+
+    int forward = piece->isWhite() ? 1 : -1;
+    int passed_row = piece->isWhite() ? 5 : 2; // the square the other pawn skipped
+    Piece* passed_pawn = grid.at(m.to_col, m.from_row);
+
+    return m.to_row == passed_row && m.to_row - m.from_row == forward &&
+           abs(m.to_col - m.from_col) == 1 && grid.at(m.to_col, m.to_row) == nullptr &&
+           passed_pawn != nullptr && passed_pawn->kind() == 'P' && passed_pawn->isWhite() != piece->isWhite();
+}
+
+bool Board::is_castling(const Move& m) const {
+    Piece* piece = grid.at(m.from_col, m.from_row);
+    return piece != nullptr && piece->kind() == 'K' && m.from_row == m.to_row && abs(m.to_col - m.from_col) == 2;
+}
+
+// King to g1/c1 (g8/c8): neither piece has moved, nothing in between,
+// and the king isn't in check and doesn't pass through or land on an attacked square.
+bool Board::castling_allowed(const Move& m) const {
+    Piece* king = grid.at(m.from_col, m.from_row);
+    bool white = king->isWhite();
+    int home = white ? 0 : 7;
+    if (king->getHasMoved() || m.from_col != 4 || m.from_row != home) return false;
+
+    int rook_col = (m.to_col == 6) ? 7 : 0;
+    Piece* rook = grid.at(rook_col, home);
+    if (rook == nullptr || rook->kind() != 'R' || rook->isWhite() != white || rook->getHasMoved()) return false;
+
+    for (int c = min(4, rook_col) + 1; c < max(4, rook_col); c++) {
+        if (grid.at(c, home) != nullptr) return false;
+    }
+
+    int step = (m.to_col > 4) ? 1 : -1;
+    for (int c = 4; c != m.to_col + step; c += step) {
+        if (square_attacked(grid, c, home, !white)) return false;
+    }
+    return true;
+}
+
+// Does the move follow the moving piece's rules? (Doesn't look at checks yet.)
+bool Board::follows_rules(const Move& m) const {
+    Piece* piece = grid.at(m.from_col, m.from_row);
+    if (is_castling(m)) return castling_allowed(m);
+    if (is_en_passant(m)) return true;
+    return piece->can_move(grid, m.from_col, m.from_row, m.to_col, m.to_row);
+}
+
+// The position after the move. Only rearranges pointers: nothing is created or deleted,
+// so it's safe for trying moves. The captured piece (if any) is returned through `captured`.
+Grid Board::after(const Move& m, Piece** captured) const {
+    Grid next = grid;
+    Piece* piece = next.sq[m.from_col][m.from_row];
+    *captured = next.sq[m.to_col][m.to_row];
+
+    if (is_en_passant(m)) {
+        *captured = next.sq[m.to_col][m.from_row];
+        next.sq[m.to_col][m.from_row] = nullptr;
+    }
+    if (is_castling(m)) {
+        int rook_from = (m.to_col > m.from_col) ? 7 : 0;
+        int rook_to = (m.to_col > m.from_col) ? 5 : 3;
+        next.sq[rook_to][m.from_row] = next.sq[rook_from][m.from_row];
+        next.sq[rook_from][m.from_row] = nullptr;
+    }
+
+    next.sq[m.to_col][m.to_row] = piece;
+    next.sq[m.from_col][m.from_row] = nullptr;
+    return next;
+}
+
+bool Board::is_legal(const Move& m) const {
+    if (!follows_rules(m)) return false;
+    Piece* captured;
+    return !king_in_check(after(m, &captured), grid.at(m.from_col, m.from_row)->isWhite());
+}
+
+bool Board::has_legal_move(bool white) const {
+    for (int fc = 0; fc < 8; fc++) {
+        for (int fr = 0; fr < 8; fr++) {
+            Piece* p = grid.at(fc, fr);
+            if (p == nullptr || p->isWhite() != white) continue;
+
+            for (int tc = 0; tc < 8; tc++) {
+                for (int tr = 0; tr < 8; tr++) {
+                    if (tc == fc && tr == fr) continue;
+                    if (is_legal(Move{ fc, fr, tc, tr, 0 })) return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 
+// ------- Playing a move ---------
+bool Board::move(const string& text, int turn) {
 
-void Board::display_board() {
-    std::cout << std::endl << std::endl;
-    const char white_square = ' ';      // white block
-    const char black_square = char(219); // black block
-
-    bool white = true;
-    int col_counter = 0;
-    int row_counter = 0;
-
-    for (int row = 0; row < 24; row++) {
-        for (int col = 0; col < 24; col++) {
-
-
-            if (col_counter == 3) {
-                white = !white;
-                col_counter = 0;
-            }
-            if (brd[col][row] != nullptr) {
-                // Print the piece
-                cout << (brd[col][row])->get_symbol() << " ";
-                col_counter++;
-            }
-            else {
-                if (white) {
-                    cout << white_square << white_square; // white square
-                    col_counter++;
-                }
-                else {
-                    cout << black_square << black_square; // black square
-                    col_counter++;
-                }
-            }
-
-        }
-
-        if (std::find(legal_col_row.begin(), legal_col_row.end(), row) != legal_col_row.end()) cout << " | " << 8 - (row - 1) / 3;
-        // else cout << " |   ";
-        cout << endl;
-        row_counter++;
-        if (row_counter == 3) {
-            white = !white;
-            row_counter = 0;
-        }
-    }
-
-    cout << "  ";
-    for (int i = 1; i < 24; i++) {
-        if (std::find(legal_col_row.begin(), legal_col_row.end(), i) != legal_col_row.end()) cout << "_" << " ";
-        else cout << "  ";
-    }
-
-    cout << endl;
-    cout << "  ";
-    for (int i = 1; i < 24; i++) {
-        char c = convert_to_char((i - 1) / 3 + 1);
-        if (std::find(legal_col_row.begin(), legal_col_row.end(), i) != legal_col_row.end()) cout << c << " ";
-        else cout << "  ";
-    }
-    cout << endl;
-}
-
-bool Board::move(string move, int turn) {
-
-    // check if legal move
     if (game_over) return false;
-    if (!is_legit_string(move)) {
+
+    Move m;
+    if (!parse(text, m)) {
         cout << "Moves look like e2e4, or e7e8Q for a promotion." << endl;
         return false;
     }
 
-    // convert move to a list of ints representing the move
-    int* ans = convert_string_to_col_row(move);
-
-    // files a-h go left to right, rank 8 is at the top of the board
-    int origin_col = 3 * (ans[0] - 1) + 1;
-    int origin_row = 3 * (8 - ans[1]) + 1;
-    int dst_col = 3 * (ans[2] - 1) + 1;
-    int dst_row = 3 * (8 - ans[3]) + 1;
-    char new_piece = char(toupper(ans[4]));
-
-    delete[] ans;
-    ans = nullptr;
-
     // get moving piece
-    Piece* piece = brd[origin_col][origin_row];
+    Piece* piece = grid.at(m.from_col, m.from_row);
     if (piece == nullptr) {
         cout << "No piece at origin." << endl;
         return false;
@@ -182,206 +242,68 @@ bool Board::move(string move, int turn) {
         cout << "White trying to move black piece" << endl;
         return false;
     }
-    if (origin_col == dst_col && origin_row == dst_row) {
+    if (m.from_col == m.to_col && m.from_row == m.to_row) {
         cout << "The piece has to move." << endl;
         return false;
     }
 
-    // a pawn reaching the last rank must promote
-    char pawn_symbol = piece->isWhite() ? 'P' : 'p';
-    int last_row = piece->isWhite() ? 1 : 22;
-    bool promoting = piece->get_symbol() == pawn_symbol && dst_row == last_row;
-
-    if (new_piece != 0 && !promoting) {
+    bool white = piece->isWhite();
+    bool promoting = piece->kind() == 'P' && m.to_row == (white ? 7 : 0);
+    if (m.promotion != 0 && !promoting) {
         cout << "Only a pawn reaching the last rank can promote." << endl;
         return false;
     }
-    if (promoting && (new_piece == 0 || string("QRBN").find(new_piece) == string::npos)) {
-        if (try_move(piece, dst_col, dst_row, turn, false))
-            cout << "Pawn promotion: add Q, R, B or N, for example " << move.substr(0, 4) << "Q" << endl;
+
+    if (!follows_rules(m)) {
+        if (is_castling(m)) cout << "Castling isn't allowed here." << endl;
+        else cout << "That piece can't move there." << endl;
+        return false;
+    }
+    if (!is_legal(m)) {
+        cout << (white ? "White" : "Black") << " king would be in check!" << endl;
+        return false;
+    }
+    if (promoting && string("QRBN").find(m.promotion) == string::npos) {
+        cout << "Pawn promotion: add Q, R, B or N, for example " << text.substr(0, 4) << "Q" << endl;
         return false;
     }
 
-    // perform the move (reverted inside if it leaves our own king in check)
-    if (!try_move(piece, dst_col, dst_row, turn, true)) return false;
+    // perform the move
+    bool castling = is_castling(m);
+    Piece* captured = nullptr;
+    grid = after(m, &captured);
+    delete captured;
+
+    piece->set_has_moved(true);
+    if (castling) {
+        grid.at((m.to_col > m.from_col) ? 5 : 3, m.to_row)->set_has_moved(true);
+    }
+    en_passant_col = (piece->kind() == 'P' && abs(m.to_row - m.from_row) == 2) ? m.to_col : -1;
 
     if (promoting) {
-        bool white = piece->isWhite();
         Piece* promoted;
-        switch (new_piece) {
-            case 'R': promoted = new Rook(dst_col, dst_row, white); break;
-            case 'B': promoted = new Bishop(dst_col, dst_row, white); break;
-            case 'N': promoted = new Knight(dst_col, dst_row, white); break;
-            default:  promoted = new Queen(dst_col, dst_row, white); break;
+        switch (m.promotion) {
+            case 'R': promoted = new Rook(white); break;
+            case 'B': promoted = new Bishop(white); break;
+            case 'N': promoted = new Knight(white); break;
+            default:  promoted = new Queen(white); break;
         }
         promoted->set_has_moved(true);
-        brd[dst_col][dst_row] = promoted;
-        delete_piece(*piece);
-        add_piece(promoted);
+        delete piece;
+        grid.sq[m.to_col][m.to_row] = promoted;
     }
 
-    checkForCheck(turn);
+    check_game_state(turn);
     return true;
 }
 
-// Moves the piece and keeps the move only if it doesn't leave its own king in check.
-// With keep == false the move is always undone, so this only answers "is it legal?".
-bool Board::try_move(Piece* piece, int dst_col, int dst_row, int turn, bool keep) {
-    int origin_col = piece->get_col();
-    int origin_row = piece->get_row();
-    bool had_moved = piece->getHasMoved();
-    Piece* captured = brd[dst_col][dst_row];
-
-    if (!piece->move(dst_col, dst_row, turn, brd)) return false;
-
-    brd[origin_col][origin_row] = nullptr;
-    brd[dst_col][dst_row] = piece;
-
-    King* own_king = piece->isWhite() ? white_king : black_king;
-    bool legal = !own_king->isInCheck(brd);
-    if (!legal && keep) {
-        cout << (piece->isWhite() ? "White" : "Black") << " king would be in check!" << endl;
-    }
-
-    if (!legal || !keep) {
-        // revert move: board squares and the piece's own position
-        brd[origin_col][origin_row] = piece;
-        brd[dst_col][dst_row] = captured;
-        piece->set_col(origin_col);
-        piece->set_row(origin_row);
-        piece->set_has_moved(had_moved);
-        return legal;
-    }
-
-    if (captured != nullptr) delete_piece(*captured);
-    return true;
-}
-
-bool Board::has_legal_move(int turn) {
-    // try every square for every piece, with the pieces' "invalid move" messages muted
-    vector<Piece*> own = (turn == 0) ? white_pieces : black_pieces;
-    streambuf* old_buf = cout.rdbuf(nullptr);
-    bool found = false;
-
-    for (Piece* p : own) {
-        for (int c : legal_col_row) {
-            for (int r : legal_col_row) {
-                if (c == p->get_col() && r == p->get_row()) continue;
-                if (try_move(p, c, r, turn, false)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found) break;
-        }
-        if (found) break;
-    }
-
-    cout.rdbuf(old_buf);
-    return found;
-}
-
-void Board::add_piece(Piece* piece) {
-    pieces.push_back(piece);
-    if (piece->isWhite()) {
-        white_pieces.push_back(piece);
-        if (piece->get_symbol() == 'P')
-            white_Pawns.push_back(piece);
-    }
-    else {
-        black_pieces.push_back(piece);
-        if (piece->get_symbol() == 'p')
-            black_Pawns.push_back(piece);
-    }
-}
-
-
-
-// ------- Creating pieces ---------
-void Board::create_pawns() {
-    // Create black Pawns
-    for (int col = 0; col < 8; col++) {
-        brd[3 * col + 1][4] = new Pawn(3 * col + 1, 4, false);
-        pieces.push_back(brd[(3 * col) + 1][4]);
-    }
-
-    // Create white Pawns
-    for (int col = 0; col < 8; col++) {
-        brd[3 * col + 1][19] = new Pawn(3 * col + 1, 19, true);
-        pieces.push_back(brd[3 * col + 1][19]);
-    }
-}
-
-void Board::create_rooks() {
-    // Create Rook 
-    brd[1][1] = new Rook(1, 1, false);
-    brd[22][1] = new Rook(22, 1, false);
-    brd[1][22] = new Rook(1, 22, true);
-    brd[22][22] = new Rook(22, 22, true);
-    pieces.push_back(brd[1][1]);
-    pieces.push_back(brd[1][22]);
-    pieces.push_back(brd[22][1]);
-    pieces.push_back(brd[22][22]);
-}
-
-void Board::create_bishops() {
-    // Create Bishop
-    brd[7][1] = new Bishop(7, 1, false); brd[16][1] = new Bishop(16, 1, false);
-    brd[7][22] = new Bishop(7, 22, true); brd[16][22] = new Bishop(16, 22, true);
-    pieces.push_back(brd[7][1]);
-    pieces.push_back(brd[16][1]);
-    pieces.push_back(brd[7][22]);
-    pieces.push_back(brd[16][22]);
-}
-
-void Board::create_knights() {
-    // Create Knight
-    brd[4][1] = new Knight(4, 1, false); brd[19][1] = new Knight(19, 1, false);
-    brd[4][22] = new Knight(4, 22, true); brd[19][22] = new Knight(19, 22, true);
-    pieces.push_back(brd[4][1]);
-    pieces.push_back(brd[19][1]);
-    pieces.push_back(brd[4][22]);
-    pieces.push_back(brd[19][22]);
-}
-
-void Board::create_royalty() {
-    // Create Queen
-    brd[10][1] = new Queen(10, 1, false);
-    brd[10][22] = new Queen(10, 22, true);
-    pieces.push_back(brd[10][1]);
-    pieces.push_back(brd[10][22]);
-
-    // Create King
-    white_king = new King(13, 22, true);
-    black_king = new King(13, 1, false);
-    brd[13][1] = black_king;
-    brd[13][22] = white_king;
-
-    pieces.push_back(black_king);
-    pieces.push_back(white_king);
-}
-
-void Board::place_pieces() {
-    create_pawns();
-    create_rooks();
-    create_bishops();
-    create_knights();
-    create_royalty();
-
-    // keep vector of black and white pieces
-    vector<Piece*> created = pieces;
-    pieces.clear();
-    for (Piece* piece : created) add_piece(piece);
-}
-
-void Board::checkForCheck(int turn) {
+void Board::check_game_state(int turn) {
     // after `turn` moved, look at the opponent's position
-    int opponent = (turn == 0) ? 1 : 0;
-    King* king = (opponent == 0) ? white_king : black_king;
-    string name = (opponent == 0) ? "White" : "Black";
+    bool opponent_white = (turn == 1);
+    string name = opponent_white ? "White" : "Black";
 
-    in_check = king->isInCheck(brd);
-    bool can_move = has_legal_move(opponent);
+    in_check = king_in_check(grid, opponent_white);
+    bool can_move = has_legal_move(opponent_white);
 
     if (in_check && !can_move) {
         game_over = true;

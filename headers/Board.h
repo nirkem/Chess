@@ -1,59 +1,45 @@
 #pragma once
-#include <vector>
-#include "Piece.h"
-#include "King.h"
 #include <string>
-#include <algorithm>
-using namespace std;
+#include "Grid.h"
 
 class Board {
     private:
+        struct Move {
+            int from_col, from_row, to_col, to_row;
+            char promotion; // 'Q', 'R', 'B', 'N', or 0 for none
+        };
+
         // Attributes:
+        Grid grid;                  // owns the pieces standing on it
+        int en_passant_col = -1;    // file of a pawn that just moved two squares, else -1
         bool in_check = false;
         bool game_over = false;
-        string game_result;
-        vector<int> legal_col_row;
-        Piece* brd[24][24]{};
-        King* white_king;
-        King* black_king;
-        vector<Piece*> pieces;
-        vector<Piece*> white_pieces;
-        vector<Piece*> white_Pawns;
-        vector<Piece*> black_pieces;
-        vector<Piece*> black_Pawns;
+        std::string game_result;
 
         // Methods:
         void place_pieces();
-        void create_pawns();
-        void create_rooks();
-        void create_bishops();
-        void create_knights();
-        void create_royalty();
-        void delete_piece(Piece& piece);
-        void add_piece(Piece* piece);
-        bool try_move(Piece* piece, int dst_col, int dst_row, int turn, bool keep);
-        bool has_legal_move(int turn);
-        void checkForCheck(int turn);
+        bool parse(const std::string& text, Move& m) const;
+        bool square_attacked(const Grid& g, int col, int row, bool by_white) const;
+        bool king_in_check(const Grid& g, bool white) const;
+        bool is_en_passant(const Move& m) const;
+        bool is_castling(const Move& m) const;
+        bool castling_allowed(const Move& m) const;
+        bool follows_rules(const Move& m) const;
+        Grid after(const Move& m, Piece** captured) const;
+        bool is_legal(const Move& m) const;
+        bool has_legal_move(bool white) const;
+        void check_game_state(int turn);
 
     public:
         // ctor and dtor
         Board();
         ~Board();
-        // Copy ctor
-        Board(const Board& other);
-        Board& operator=(const Board& other);
-        // Move ctor
-        Board(Board&& other) noexcept;
-        Board& operator=(Board&& other) noexcept;
+        // The board owns its pieces, so it can't be copied
+        Board(const Board& other) = delete;
+        Board& operator=(const Board& other) = delete;
 
-        void display_board();
-        bool move(string move, int turn);
+        void display_board() const;
+        bool move(const std::string& move, int turn);
         bool is_game_over() const { return game_over; }
-        string get_game_result() const { return game_result; }
-
-        vector<Piece*> get_pieces();
-        vector<Piece*> get_white_pieces();
-        vector<Piece*> get_white_Pawns();
-        vector<Piece*> get_black_pieces();
-        vector<Piece*> get_black_Pawns();
+        std::string get_game_result() const { return game_result; }
 };
